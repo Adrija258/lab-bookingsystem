@@ -26,7 +26,10 @@ const app = express();
 // MIDDLEWARE
 // ========================
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: [
+    'http://localhost:3000',
+    'https://lab-bookingsystem-ict15eg3g-adrija258-s-projects.vercel.app'
+  ],
   credentials: true
 }));
 app.use(express.json());
