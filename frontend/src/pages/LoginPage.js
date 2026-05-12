@@ -56,7 +56,7 @@ const LoginPage = () => {
   // Quick demo fill
   const fillDemo = (role) => {
     if (role === 'admin') setForm({ email: 'admin@lab.com', password: 'Lab@Admin2026' });
-    else setForm({ email: 'student@lab.com', password: 'Lab@Student2026' });
+    else setForm({ email: 'student1@lab.com', password: 'Lab@Student12026' });
     setErrors({});
   };
 
