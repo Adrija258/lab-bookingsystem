@@ -1,14 +1,17 @@
 /**
  * Auth Routes
- * POST /api/auth/register
- * POST /api/auth/login
- * GET  /api/auth/me
+ * POST   /api/auth/register
+ * POST   /api/auth/login
+ * GET    /api/auth/me
+ * DELETE /api/auth/me          - Delete own account
+ * GET    /api/auth/users       - Admin: list all users
+ * DELETE /api/auth/users/:id   - Admin: delete a user
  */
 
 const express = require('express');
 const { body } = require('express-validator');
-const { register, login, getMe } = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware');
+const { register, login, getMe, deleteAccount, deleteUserByAdmin, getAllUsers } = require('../controllers/authController');
+const { protect, adminOnly } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -31,5 +34,8 @@ const loginValidation = [
 router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);
 router.get('/me', protect, getMe);
+router.delete('/me', protect, deleteAccount);
+router.get('/users', protect, adminOnly, getAllUsers);
+router.delete('/users/:id', protect, adminOnly, deleteUserByAdmin);
 
 module.exports = router;

@@ -7,15 +7,35 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { bookingService, equipmentService } from '../services/api';
+import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const DashboardPage = () => {
-  const { user } = useAuth();
+  const { user, deleteAccount } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [recentBookings, setRecentBookings] = useState([]);
   const [recentEquipment, setRecentEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+
+  const handleDeleteAccount = async () => {
+    if (confirmText !== 'DELETE') return;
+    setDeleteLoading(true);
+    try {
+      await deleteAccount();
+      toast.success('Account deleted successfully');
+      navigate('/login');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete account');
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteModal(false);
+      setConfirmText('');
+    }
+  };
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -268,6 +288,106 @@ const DashboardPage = () => {
           </div>
         </div>
       </div>
+      {/* Danger Zone */}
+      <div className="card-dark mt-4" style={{ border: '1px solid var(--accent-red)', background: 'rgba(248,81,73,0.04)' }}>
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-3" style={{ padding: '0.25rem 0' }}>
+          <div>
+            <h3 style={{ fontSize: '1rem', margin: 0, color: 'var(--accent-red)', fontFamily: 'var(--font-display)' }}>
+              <i className="bi bi-exclamation-triangle me-2"></i>Danger Zone
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.35rem 0 0 0' }}>
+              Permanently delete your account and all associated data. This action cannot be undone.
+            </p>
+          </div>
+          <button
+            className="btn-danger-custom"
+            onClick={() => setShowDeleteModal(true)}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            <i className="bi bi-trash3 me-1"></i> Delete Account
+          </button>
+        </div>
+      </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000
+        }}>
+          <div className="card-dark fade-in-up" style={{ width: '90%', maxWidth: 440 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.75rem',
+              marginBottom: '1rem', paddingBottom: '1rem',
+              borderBottom: '1px solid var(--border)'
+            }}>
+              <div style={{
+                width: 42, height: 42, borderRadius: '50%',
+                background: 'rgba(248,81,73,0.15)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <i className="bi bi-exclamation-triangle-fill" style={{ color: 'var(--accent-red)', fontSize: '1.2rem' }}></i>
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--accent-red)', fontFamily: 'var(--font-display)' }}>
+                  Delete Account
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  This is permanent and irreversible
+                </p>
+              </div>
+            </div>
+
+            <div style={{
+              background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.2)',
+              borderRadius: 'var(--radius-sm)', padding: '0.75rem', marginBottom: '1rem',
+              fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5
+            }}>
+              <strong style={{ color: 'var(--accent-red)' }}>Warning:</strong> Deleting your account will:
+              <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.2rem' }}>
+                <li>Remove your profile and login credentials</li>
+                <li>Delete all your booking history</li>
+                <li>This action <strong>cannot</strong> be undone</li>
+              </ul>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label-custom" style={{ fontSize: '0.82rem' }}>
+                Type <strong style={{ color: 'var(--accent-red)' }}>DELETE</strong> to confirm
+              </label>
+              <input
+                type="text"
+                className="form-control-custom"
+                placeholder="Type DELETE here"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.1em' }}
+              />
+            </div>
+
+            <div className="d-flex gap-2 justify-content-end">
+              <button
+                className="btn-outline-custom"
+                onClick={() => { setShowDeleteModal(false); setConfirmText(''); }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-danger-custom"
+                onClick={handleDeleteAccount}
+                disabled={confirmText !== 'DELETE' || deleteLoading}
+                style={{ opacity: confirmText !== 'DELETE' ? 0.5 : 1 }}
+              >
+                {deleteLoading
+                  ? <span className="spinner-border spinner-border-sm me-1"></span>
+                  : <i className="bi bi-trash3 me-1"></i>
+                }
+                Permanently Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

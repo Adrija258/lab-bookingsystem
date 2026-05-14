@@ -1,10 +1,10 @@
 /**
  * Admin Panel Page
- * Admin-only page to manage booking requests
+ * Admin-only page to manage booking requests and users
  */
 
 import React, { useState, useEffect } from 'react';
-import { bookingService } from '../services/api';
+import { bookingService, authService } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -14,6 +14,10 @@ const AdminPanelPage = () => {
   const [actionLoading, setActionLoading] = useState(null);
   const [filter, setFilter] = useState('all');
   const [noteModal, setNoteModal] = useState({ open: false, booking: null, status: '', note: '' });
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [deleteUserModal, setDeleteUserModal] = useState({ open: false, user: null });
+  const [deleteUserLoading, setDeleteUserLoading] = useState(false);
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -28,7 +32,36 @@ const AdminPanelPage = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const res = await authService.getAllUsers();
+      setUsers(res.data.users || []);
+    } catch (err) {
+      toast.error('Failed to load users');
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   useEffect(() => { fetchBookings(); }, [filter]);
+  useEffect(() => { fetchUsers(); }, []);
+
+  const handleDeleteUser = async () => {
+    const target = deleteUserModal.user;
+    if (!target) return;
+    setDeleteUserLoading(true);
+    try {
+      await authService.deleteUser(target._id);
+      toast.success(`User "${target.name}" deleted`);
+      setDeleteUserModal({ open: false, user: null });
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete user');
+    } finally {
+      setDeleteUserLoading(false);
+    }
+  };
 
   const openActionModal = (booking, status) => {
     setNoteModal({ open: true, booking, status, note: '' });
@@ -278,6 +311,91 @@ const AdminPanelPage = () => {
                   : <i className={`bi ${noteModal.status === 'approved' ? 'bi-check-lg' : 'bi-x-lg'} me-1`}></i>
                 }
                 Confirm {noteModal.status === 'approved' ? 'Approval' : 'Rejection'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Users Section */}
+      <div className="card-dark mt-4" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="card-header-custom d-flex align-items-center justify-content-between">
+          <h2 style={{ fontSize: '1rem', margin: 0 }}>
+            <i className="bi bi-people me-2" style={{ color: 'var(--accent-blue)' }}></i>
+            Manage Users
+          </h2>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{users.length} total</span>
+        </div>
+        {usersLoading ? (
+          <div style={{ padding: '2rem' }}><LoadingSpinner /></div>
+        ) : users.length === 0 ? (
+          <div className="empty-state"><p className="empty-state-text">No users found.</p></div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="table-dark-custom">
+              <thead>
+                <tr>
+                  <th>#</th><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u, idx) => (
+                  <tr key={u._id}>
+                    <td style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{idx + 1}</td>
+                    <td style={{ fontWeight: 600 }}>{u.name}</td>
+                    <td style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{u.email}</td>
+                    <td>
+                      <span className={`role-pill ${u.role === 'admin' ? 'role-admin' : 'role-student'}`}>{u.role}</span>
+                    </td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      {new Date(u.createdAt).toLocaleDateString()}
+                    </td>
+                    <td>
+                      <button
+                        className="btn-danger-custom"
+                        style={{ fontSize: '0.75rem', padding: '0.3rem 0.65rem' }}
+                        onClick={() => setDeleteUserModal({ open: true, user: u })}
+                      >
+                        <i className="bi bi-trash3 me-1"></i>Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Delete User Confirmation Modal */}
+      {deleteUserModal.open && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000
+        }}>
+          <div className="card-dark fade-in-up" style={{ width: '90%', maxWidth: 420 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{
+                width: 42, height: 42, borderRadius: '50%',
+                background: 'rgba(248,81,73,0.15)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center'
+              }}>
+                <i className="bi bi-person-x-fill" style={{ color: 'var(--accent-red)', fontSize: '1.2rem' }}></i>
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--accent-red)' }}>Delete User</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>This cannot be undone</p>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              Are you sure you want to delete <strong style={{ color: 'var(--text-primary)' }}>{deleteUserModal.user?.name}</strong>
+              {' '}({deleteUserModal.user?.email})? All their bookings will also be removed.
+            </p>
+            <div className="d-flex gap-2 justify-content-end">
+              <button className="btn-outline-custom" onClick={() => setDeleteUserModal({ open: false, user: null })}>Cancel</button>
+              <button className="btn-danger-custom" onClick={handleDeleteUser} disabled={deleteUserLoading}>
+                {deleteUserLoading ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="bi bi-trash3 me-1"></i>}
+                Delete User
               </button>
             </div>
           </div>
