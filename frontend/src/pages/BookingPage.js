@@ -26,10 +26,15 @@ const BookingPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [bookingCount, setBookingCount] = useState({ activeBookings: 0, maxBookings: 15, remaining: 15 });
 
-  // Get tomorrow as minimum date
+  // Get today as minimum date and 15 days ahead as maximum date
   const getMinDate = () => {
     const d = new Date();
-    d.setDate(d.getDate());
+    return d.toISOString().split('T')[0];
+  };
+
+  const getMaxDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 15);
     return d.toISOString().split('T')[0];
   };
 
@@ -72,7 +77,10 @@ const BookingPage = () => {
     else {
       const selected = new Date(form.date);
       const today = new Date(); today.setHours(0, 0, 0, 0);
+      const maxDate = new Date(today);
+      maxDate.setDate(maxDate.getDate() + 15);
       if (selected < today) errs.date = 'Cannot book for a past date';
+      else if (selected > maxDate) errs.date = 'Booking can only be made within the next 15 days';
     }
     if (!form.timeSlot) errs.timeSlot = 'Please select a time slot';
     if (!form.requestedQuantity || Number(form.requestedQuantity) < 1) {
@@ -202,6 +210,7 @@ const BookingPage = () => {
                 <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1rem' }}>
                   <li>Bookings require admin approval</li>
                   <li>One slot per booking request</li>
+                  <li>Only book within the next 15 days</li>
                   <li>Cannot book in the past</li>
                   <li>Max {bookingCount.maxBookings} active bookings per instrument</li>
                 </ul>
@@ -236,6 +245,7 @@ const BookingPage = () => {
                   type="date"
                   className="form-control-custom"
                   min={getMinDate()}
+                  max={getMaxDate()}
                   value={form.date}
                   onChange={e => { setForm(p => ({ ...p, date: e.target.value, timeSlot: '' })); setErrors(p => ({ ...p, date: '' })); }}
                   style={{ maxWidth: 300 }}

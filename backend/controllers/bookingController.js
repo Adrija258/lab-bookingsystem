@@ -106,6 +106,15 @@ const createBooking = async (req, res) => {
       });
     }
 
+    const maxBookingDate = new Date(today);
+    maxBookingDate.setDate(maxBookingDate.getDate() + 15);
+    if (bookingDate > maxBookingDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bookings can only be made within the next 15 days'
+      });
+    }
+
     // ========================
     // CHECK DOUBLE BOOKING
     // ========================

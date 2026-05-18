@@ -24,7 +24,21 @@ const router = express.Router();
 const bookingValidation = [
   body('equipmentId').notEmpty().withMessage('Equipment is required'),
   body('date').notEmpty().withMessage('Date is required')
-    .isISO8601().withMessage('Invalid date format'),
+    .isISO8601().withMessage('Invalid date format')
+    .custom((value) => {
+      const selected = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const maxDate = new Date(today);
+      maxDate.setDate(maxDate.getDate() + 15);
+      if (selected < today) {
+        throw new Error('Cannot book for a past date');
+      }
+      if (selected > maxDate) {
+        throw new Error('Bookings can only be made within the next 15 days');
+      }
+      return true;
+    }),
   body('timeSlot').notEmpty().withMessage('Time slot is required'),
   body('requestedQuantity')
     .optional()
