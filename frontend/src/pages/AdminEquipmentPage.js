@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { equipmentService } from '../services/api';
+import { equipmentService, labService } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -12,7 +12,7 @@ const CATEGORIES = ['Electronics', 'Chemistry', 'Biology', 'Physics', 'Computer'
 
 const EMPTY_FORM = {
   name: '', description: '', category: 'Electronics',
-  quantity: 1, location: 'Main Lab', availability: true, imageUrl: ''
+  quantity: 1, location: 'Main Lab', availability: true, imageUrl: '', lab: ''
 };
 
 const AdminEquipmentPage = () => {
@@ -24,6 +24,7 @@ const AdminEquipmentPage = () => {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [labs, setLabs] = useState([]);
 
   const fetchEquipment = async () => {
     setLoading(true);
@@ -37,13 +38,29 @@ const AdminEquipmentPage = () => {
     }
   };
 
+  const fetchLabs = async () => {
+    try {
+      const res = await labService.getAll();
+      setLabs(res.data.labs || []);
+    } catch (err) {
+      toast.error('Failed to load labs');
+    }
+  };
+
+  useEffect(() => {
+    fetchLabs();
+  }, []);
+
   useEffect(() => {
     const t = setTimeout(fetchEquipment, 300);
     return () => clearTimeout(t);
   }, [search]);
 
   const openAddModal = () => {
-    setForm(EMPTY_FORM);
+    setForm({
+      ...EMPTY_FORM,
+      lab: labs.length > 0 ? labs[0]._id : ''
+    });
     setErrors({});
     setEditingId(null);
     setShowModal(true);
@@ -51,10 +68,14 @@ const AdminEquipmentPage = () => {
 
   const openEditModal = (eq) => {
     setForm({
-      name: eq.name, description: eq.description,
-      category: eq.category, quantity: eq.quantity,
+      name: eq.name,
+      description: eq.description,
+      category: eq.category,
+      quantity: eq.quantity,
       location: eq.location || 'Main Lab',
-      availability: eq.availability, imageUrl: eq.imageUrl || ''
+      availability: eq.availability,
+      imageUrl: eq.imageUrl || '',
+      lab: eq.lab?._id || ''
     });
     setErrors({});
     setEditingId(eq._id);
@@ -67,6 +88,7 @@ const AdminEquipmentPage = () => {
     if (!form.description.trim()) errs.description = 'Description is required';
     if (!form.category) errs.category = 'Category is required';
     if (form.quantity < 1) errs.quantity = 'Quantity must be at least 1';
+    if (!form.lab) errs.lab = 'Lab selection is required';
     return errs;
   };
 
@@ -121,7 +143,7 @@ const AdminEquipmentPage = () => {
           </h1>
           <p className="page-subtitle">{equipment.length} items in the lab inventory</p>
         </div>
-        <button className="btn-primary-custom" onClick={openAddModal}>
+        <button className="btn-primary-custom" onClick={openAddModal} disabled={labs.length === 0}>
           <i className="bi bi-plus-lg"></i> Add Equipment
         </button>
       </div>
@@ -164,6 +186,7 @@ const AdminEquipmentPage = () => {
                   <th>#</th>
                   <th>Name</th>
                   <th>Category</th>
+                  <th>Lab</th>
                   <th>Description</th>
                   <th>Quantity</th>
                   <th>Location</th>
@@ -183,6 +206,7 @@ const AdminEquipmentPage = () => {
                       </div>
                     </td>
                     <td><span className="category-badge">{eq.category}</span></td>
+                    <td>{eq.lab?.name || 'Unassigned'}</td>
                     <td style={{ fontSize: '0.8rem', maxWidth: 200 }}>
                       <span style={{
                         display: '-webkit-box', WebkitLineClamp: 2,
@@ -283,6 +307,23 @@ const AdminEquipmentPage = () => {
                 </div>
 
                 <div className="col-12">
+                  <label className="form-label-custom">Lab *</label>
+                  <select
+                    name="lab"
+                    className="form-control-custom"
+                    value={form.lab}
+                    onChange={handleChange}
+                    disabled={labs.length === 0}
+                  >
+                    <option value="">Select lab</option>
+                    {labs.map(l => (
+                      <option key={l._id} value={l._id}>{l.name}</option>
+                    ))}
+                  </select>
+                  {errors.lab && <p style={{ fontSize: '0.75rem', color: 'var(--accent-red)', marginTop: '0.25rem' }}>{errors.lab}</p>}
+                </div>
+
+                <div className="col-12">
                   <label className="form-label-custom">Location</label>
                   <input
                     name="location" type="text" className="form-control-custom"
@@ -317,7 +358,7 @@ const AdminEquipmentPage = () => {
                   {saving
                     ? <><span className="spinner-border spinner-border-sm me-1"></span>Saving...</>
                     : <><i className={`bi ${editingId ? 'bi-check-lg' : 'bi-plus-lg'} me-1`}></i>
-                       {editingId ? 'Save Changes' : 'Add Equipment'}</>
+                      {editingId ? 'Save Changes' : 'Add Equipment'}</>
                   }
                 </button>
               </div>

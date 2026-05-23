@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { equipmentService } from '../services/api';
+import { equipmentService, labService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import EquipmentCard from '../components/EquipmentCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -19,6 +19,8 @@ const EquipmentPage = () => {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [availabilityFilter, setAvailabilityFilter] = useState('');
+  const [labFilter, setLabFilter] = useState('All');
+  const [labs, setLabs] = useState([]);
   const [deleteId, setDeleteId] = useState(null);
 
   const fetchEquipment = useCallback(async () => {
@@ -28,9 +30,15 @@ const EquipmentPage = () => {
       if (search) params.search = search;
       if (category !== 'All') params.category = category;
       if (availabilityFilter !== '') params.availability = availabilityFilter;
+      if (labFilter !== 'All') params.lab = labFilter;
 
-      const res = await equipmentService.getAll(params);
-      setEquipment(res.data.equipment || []);
+      const [equipRes, labsRes] = await Promise.all([
+        equipmentService.getAll(params),
+        labService.getAll()
+      ]);
+
+      setEquipment(equipRes.data.equipment || []);
+      setLabs(labsRes.data.labs || []);
     } catch (err) {
       toast.error('Failed to load equipment');
     } finally {
@@ -42,6 +50,13 @@ const EquipmentPage = () => {
     const timer = setTimeout(fetchEquipment, 300);
     return () => clearTimeout(timer);
   }, [fetchEquipment]);
+
+  const groupedEquipment = equipment.reduce((groups, eq) => {
+    const labName = eq.lab?.name || 'Unassigned';
+    if (!groups[labName]) groups[labName] = [];
+    groups[labName].push(eq);
+    return groups;
+  }, {});
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this equipment?')) return;
@@ -91,7 +106,20 @@ const EquipmentPage = () => {
           </div>
 
           {/* Category */}
-          <div className="col-12 col-md-4">
+          <div className="col-12 col-md-3">
+            <select
+              className="form-control-custom"
+              value={labFilter}
+              onChange={e => setLabFilter(e.target.value)}
+            >
+              <option value="All">All Labs</option>
+              {labs.map(lab => (
+                <option key={lab._id} value={lab._id}>{lab.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="col-12 col-md-3">
             <select
               className="form-control-custom"
               value={category}
@@ -152,17 +180,44 @@ const EquipmentPage = () => {
           )}
         </div>
       ) : (
-        <div className="row g-3 stagger-children">
-          {equipment.map(eq => (
-            <div key={eq._id} className="col-12 col-sm-6 col-lg-4 col-xl-3">
-              <EquipmentCard
-                equipment={eq}
-                onEdit={() => {}}
-                onDelete={handleDelete}
-              />
-            </div>
-          ))}
-        </div>
+        Object.keys(groupedEquipment).length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">🔬</div>
+            <h3 style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>No equipment found</h3>
+            <p className="empty-state-text">Try changing your search or filter criteria</p>
+          </div>
+        ) : (
+          <div className="row g-4">
+            {Object.entries(groupedEquipment).map(([labName, items]) => (
+              <div key={labName} className="col-12">
+                <div className="card-dark" style={{ padding: '1rem' }}>
+                  <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1rem' }}>{labName}</h3>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{items.length} item{items.length !== 1 ? 's' : ''}</div>
+                    </div>
+                    {labName !== 'Unassigned' && (
+                      <span className="badge-available" style={{ fontSize: '0.8rem' }}>
+                        Lab Equipment
+                      </span>
+                    )}
+                  </div>
+                  <div className="row g-3">
+                    {items.map(eq => (
+                      <div key={eq._id} className="col-12 col-sm-6 col-lg-4 col-xl-3">
+                        <EquipmentCard
+                          equipment={eq}
+                          onEdit={() => { }}
+                          onDelete={handleDelete}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
       )}
     </div>
   );

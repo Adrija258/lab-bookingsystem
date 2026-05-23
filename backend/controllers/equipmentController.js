@@ -12,7 +12,7 @@ const Equipment = require('../models/Equipment');
 // ========================
 const getAllEquipment = async (req, res) => {
   try {
-    const { search, category, availability } = req.query;
+    const { search, category, availability, lab } = req.query;
 
     // Build filter object
     let filter = {};
@@ -32,8 +32,13 @@ const getAllEquipment = async (req, res) => {
       filter.availability = availability === 'true';
     }
 
+    if (lab) {
+      filter.lab = lab;
+    }
+
     const equipment = await Equipment.find(filter)
       .populate('addedBy', 'name email')
+      .populate('lab', 'name department location')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -53,7 +58,9 @@ const getAllEquipment = async (req, res) => {
 // ========================
 const getEquipmentById = async (req, res) => {
   try {
-    const equipment = await Equipment.findById(req.params.id).populate('addedBy', 'name email');
+    const equipment = await Equipment.findById(req.params.id)
+      .populate('addedBy', 'name email')
+      .populate('lab', 'name department location');
 
     if (!equipment) {
       return res.status(404).json({ success: false, message: 'Equipment not found' });
@@ -80,7 +87,7 @@ const createEquipment = async (req, res) => {
       });
     }
 
-    const { name, description, category, quantity, location, imageUrl } = req.body;
+    const { name, description, category, quantity, location, imageUrl, lab } = req.body;
 
     const equipment = await Equipment.create({
       name,
@@ -90,7 +97,8 @@ const createEquipment = async (req, res) => {
       location: location || 'Main Lab',
       imageUrl: imageUrl || '',
       availability: true,
-      addedBy: req.user._id
+      addedBy: req.user._id,
+      lab
     });
 
     res.status(201).json({
@@ -123,7 +131,7 @@ const updateEquipment = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Equipment not found' });
     }
 
-    const { name, description, category, quantity, location, availability, imageUrl } = req.body;
+    const { name, description, category, quantity, location, availability, imageUrl, lab } = req.body;
 
     equipment.name = name || equipment.name;
     equipment.description = description || equipment.description;
@@ -132,6 +140,7 @@ const updateEquipment = async (req, res) => {
     equipment.location = location || equipment.location;
     equipment.availability = availability !== undefined ? availability : equipment.availability;
     equipment.imageUrl = imageUrl !== undefined ? imageUrl : equipment.imageUrl;
+    equipment.lab = lab || equipment.lab;
 
     await equipment.save();
 
@@ -142,6 +151,31 @@ const updateEquipment = async (req, res) => {
     });
   } catch (err) {
     console.error('Update equipment error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ========================
+// @route   GET /api/equipment/released
+// @access  Private (Admin only)
+// ========================
+const getReleasedEquipment = async (req, res) => {
+  try {
+    const equipment = await Equipment.find({
+      status: 'available',
+      releasedAt: { $exists: true, $ne: null }
+    })
+      .populate('addedBy', 'name email')
+      .populate('lab', 'name department location')
+      .sort({ releasedAt: -1 });
+
+    res.json({
+      success: true,
+      count: equipment.length,
+      equipment
+    });
+  } catch (err) {
+    console.error('Get released equipment error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -172,6 +206,7 @@ const deleteEquipment = async (req, res) => {
 module.exports = {
   getAllEquipment,
   getEquipmentById,
+  getReleasedEquipment,
   createEquipment,
   updateEquipment,
   deleteEquipment

@@ -7,41 +7,34 @@ const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema(
   {
+    // Backwards-compatible student/equipment fields
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'User ID is required']
+      ref: 'User'
     },
     equipmentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Equipment',
-      required: [true, 'Equipment ID is required']
+      ref: 'Equipment'
     },
-    date: {
-      type: Date,
-      required: [true, 'Booking date is required']
-    },
-    timeSlot: {
+
+    // New normalized booking fields
+    student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: [true, 'Student is required'] },
+    experiment: { type: mongoose.Schema.Types.ObjectId, ref: 'Experiment' },
+    equipments: [
+      {
+        equipmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Equipment' },
+        quantity: { type: Number, default: 1 }
+      }
+    ],
+    bookingDate: { type: Date, required: [true, 'Booking date is required'] },
+    slotTime: {
       type: String,
-      required: [true, 'Time slot is required'],
-      enum: [
-        '08:00-09:00',
-        '09:00-10:00',
-        '10:00-11:00',
-        '11:00-12:00',
-        '12:00-13:00',
-        '13:00-14:00',
-        '14:00-15:00',
-        '15:00-16:00',
-        '16:00-17:00',
-        '17:00-18:00'
-      ]
+      required: [true, 'Slot time is required']
     },
     requestedQuantity: {
       type: Number,
-      required: [true, 'Requested quantity is required'],
       min: [1, 'Requested quantity must be at least 1'],
-      max: [15, 'Requested quantity cannot exceed 15'],
+      max: [50, 'Requested quantity cannot exceed 50'],
       default: 1
     },
     status: {
@@ -49,6 +42,22 @@ const bookingSchema = new mongoose.Schema(
       enum: ['pending', 'approved', 'rejected'],
       default: 'pending'
     },
+    attendanceStatus: {
+      type: String,
+      enum: ['pending', 'present', 'absent'],
+      default: 'pending'
+    },
+    attendanceMarkedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    attendanceMarkedAt: Date,
+    lab: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Lab'
+    },
+    groupBooking: { type: Boolean, default: false },
+    groupMembers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     purpose: {
       type: String,
       trim: true,
@@ -93,5 +102,16 @@ bookingSchema.statics.isSlotAvailable = async function (equipmentId, date, timeS
   const existingBooking = await this.findOne(query);
   return !existingBooking;
 };
+
+
+bookingSchema.virtual('equipment', {
+  ref: 'Equipment',
+  localField: 'equipmentId',
+  foreignField: '_id',
+  justOne: true
+});
+
+bookingSchema.set('toObject', { virtuals: true });
+bookingSchema.set('toJSON', { virtuals: true });
 
 module.exports = mongoose.model('Booking', bookingSchema);

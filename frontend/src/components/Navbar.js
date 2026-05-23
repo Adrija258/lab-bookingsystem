@@ -43,7 +43,7 @@ const Navbar = () => {
           </NavLink>
         )}
 
-        {user?.role === 'admin' && (
+        {(user?.role === 'admin' || user?.role === 'superadmin') && (
           <>
             <NavLink to="/admin" className={({ isActive }) => `nav-link-custom ${isActive ? 'active' : ''}`}>
               <i className="bi bi-shield-check"></i> Admin Panel
@@ -51,6 +51,11 @@ const Navbar = () => {
             <NavLink to="/admin/equipment" className={({ isActive }) => `nav-link-custom ${isActive ? 'active' : ''}`}>
               <i className="bi bi-tools"></i> Manage Equipment
             </NavLink>
+            {user?.role === 'superadmin' && (
+              <NavLink to="/admin/labs" className={({ isActive }) => `nav-link-custom ${isActive ? 'active' : ''}`}>
+                <i className="bi bi-building"></i> Manage Labs
+              </NavLink>
+            )}
           </>
         )}
       </div>
@@ -60,7 +65,7 @@ const Navbar = () => {
         <div className="user-badge">
           <i className="bi bi-person-circle"></i>
           <span>{user?.name?.split(' ')[0]}</span>
-          <span className={`role-pill ${user?.role === 'admin' ? 'role-admin' : 'role-student'}`}>
+          <span className={`role-pill ${user?.role === 'admin' ? 'role-admin' : user?.role === 'superadmin' ? 'role-superadmin' : 'role-student'}`}>
             {user?.role}
           </span>
         </div>
@@ -97,7 +102,7 @@ const Navbar = () => {
               <i className="bi bi-calendar2-check"></i> My Bookings
             </NavLink>
           )}
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'superadmin') && (
             <>
               <NavLink to="/admin" className="nav-link-custom" onClick={() => setMenuOpen(false)}>
                 <i className="bi bi-shield-check"></i> Admin Panel
@@ -105,6 +110,11 @@ const Navbar = () => {
               <NavLink to="/admin/equipment" className="nav-link-custom" onClick={() => setMenuOpen(false)}>
                 <i className="bi bi-tools"></i> Manage Equipment
               </NavLink>
+              {user?.role === 'superadmin' && (
+                <NavLink to="/admin/labs" className="nav-link-custom" onClick={() => setMenuOpen(false)}>
+                  <i className="bi bi-building"></i> Manage Labs
+                </NavLink>
+              )}
             </>
           )}
           <hr style={{ borderColor: 'var(--border)', margin: '0.5rem 0' }} />
@@ -112,7 +122,7 @@ const Navbar = () => {
             <div className="user-badge">
               <i className="bi bi-person-circle"></i>
               <span>{user?.name}</span>
-              <span className={`role-pill ${user?.role === 'admin' ? 'role-admin' : 'role-student'}`}>{user?.role}</span>
+              <span className={`role-pill ${user?.role === 'admin' ? 'role-admin' : user?.role === 'superadmin' ? 'role-superadmin' : 'role-student'}`}>{user?.role}</span>
             </div>
             <button className="btn-danger-custom" onClick={handleLogout} style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem' }}>
               <i className="bi bi-box-arrow-right"></i> Logout

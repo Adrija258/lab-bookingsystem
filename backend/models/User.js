@@ -30,8 +30,24 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'student'],
+      enum: ['superadmin', 'admin', 'labincharge', 'student'],
       default: 'student'
+    },
+    branch: {
+      type: String,
+      trim: true,
+      enum: ['IT', 'CSE', 'ECE', 'EEE', 'Mechanical', 'Civil', 'Other'],
+      default: 'Other'
+    },
+    year: {
+      type: Number,
+      enum: [1, 2, 3, 4]
+    },
+    registrationNumber: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true
     }
   },
   {

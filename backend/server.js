@@ -18,6 +18,10 @@ dotenv.config();
 const authRoutes = require('./routes/authRoutes');
 const equipmentRoutes = require('./routes/equipmentRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const labRoutes = require('./routes/labRoutes');
+const courseRoutes = require('./routes/courseRoutes');
+const experimentRoutes = require('./routes/experimentRoutes');
+const groupRoutes = require('./routes/groupRoutes');
 
 // Initialize Express app
 const app = express();
@@ -35,6 +39,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/labs', labRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/experiments', experimentRoutes);
+app.use('/api/groups', groupRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

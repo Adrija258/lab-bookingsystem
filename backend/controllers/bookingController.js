@@ -7,27 +7,72 @@ const { validationResult } = require('express-validator');
 const Booking = require('../models/Booking');
 const Equipment = require('../models/Equipment');
 
+const parseBookingStartDate = (date, timeSlot) => {
+  const bookingDate = new Date(date);
+  const [startTime] = timeSlot.split('-');
+  const [hours, minutes] = startTime.split(':').map(Number);
+  bookingDate.setHours(hours, minutes, 0, 0);
+  return bookingDate;
+};
+
+const releaseOverdueBookings = async () => {
+  const now = new Date();
+  const overdueBookings = await Booking.find({
+    status: 'approved',
+    attendanceStatus: 'pending'
+  }).populate('equipmentId');
+
+  const updates = [];
+
+  overdueBookings.forEach((booking) => {
+    const slotStart = parseBookingStartDate(booking.date, booking.timeSlot);
+    const graceWindow = new Date(slotStart.getTime() + 10 * 60 * 1000);
+
+    if (now > graceWindow) {
+      booking.attendanceStatus = 'absent';
+      booking.attendanceMarkedAt = now;
+      booking.attendanceMarkedBy = null;
+
+      if (booking.equipmentId) {
+        booking.equipmentId.availability = true;
+        booking.equipmentId.status = 'available';
+        booking.equipmentId.releasedAt = now;
+        updates.push(booking.equipmentId.save());
+      }
+
+      updates.push(booking.save());
+    }
+  });
+
+  await Promise.all(updates);
+};
+
 // ========================
 // @route   GET /api/bookings
 // @access  Private
 // ========================
 const getAllBookings = async (req, res) => {
   try {
+    await releaseOverdueBookings();
+
     let filter = {};
 
-    // Students see only their own bookings
     if (req.user.role === 'student') {
       filter.userId = req.user._id;
     }
 
-    // Optional status filter
     if (req.query.status && req.query.status !== 'all') {
       filter.status = req.query.status;
     }
 
+    if (req.query.attendanceStatus && req.query.attendanceStatus !== 'all') {
+      filter.attendanceStatus = req.query.attendanceStatus;
+    }
+
     const bookings = await Booking.find(filter)
       .populate('userId', 'name email')
-      .populate('equipmentId', 'name category location')
+      .populate('equipmentId', 'name category location status availability')
+      .populate('lab', 'name department location')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -37,6 +82,125 @@ const getAllBookings = async (req, res) => {
     });
   } catch (err) {
     console.error('Get bookings error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ========================
+// @route   GET /api/bookings/pending
+// @access  Private (Admin)
+// ========================
+const getPendingAttendance = async (req, res) => {
+  try {
+    await releaseOverdueBookings();
+
+    const bookings = await Booking.find({
+      status: 'approved',
+      attendanceStatus: 'pending'
+    })
+      .populate('userId', 'name email')
+      .populate('equipmentId', 'name category location status availability')
+      .populate('lab', 'name department location')
+      .sort({ date: 1, timeSlot: 1 });
+
+    res.json({
+      success: true,
+      count: bookings.length,
+      bookings
+    });
+  } catch (err) {
+    console.error('Get pending attendance error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ========================
+// @route   PATCH /api/bookings/:id/mark-present
+// @access  Private (Admin)
+// ========================
+const markPresentBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('equipmentId');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (booking.status !== 'approved' || booking.attendanceStatus !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only approved bookings with pending attendance can be marked present'
+      });
+    }
+
+    booking.attendanceStatus = 'present';
+    booking.attendanceMarkedBy = req.user._id;
+    booking.attendanceMarkedAt = new Date();
+
+    if (booking.equipmentId) {
+      booking.equipmentId.availability = false;
+      booking.equipmentId.status = 'in-use';
+      await booking.equipmentId.save();
+    }
+
+    await booking.save();
+    await booking
+      .populate('userId', 'name email')
+      .populate('equipmentId', 'name category location status availability')
+      .populate('lab', 'name department location');
+
+    res.json({
+      success: true,
+      message: 'Attendance marked present',
+      booking
+    });
+  } catch (err) {
+    console.error('Mark present error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ========================
+// @route   PATCH /api/bookings/:id/mark-absent
+// @access  Private (Admin)
+// ========================
+const markAbsentBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('equipmentId');
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (booking.status !== 'approved' || booking.attendanceStatus !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only approved bookings with pending attendance can be marked absent'
+      });
+    }
+
+    booking.attendanceStatus = 'absent';
+    booking.attendanceMarkedBy = req.user._id;
+    booking.attendanceMarkedAt = new Date();
+
+    if (booking.equipmentId) {
+      booking.equipmentId.availability = true;
+      booking.equipmentId.status = 'available';
+      booking.equipmentId.releasedAt = new Date();
+      await booking.equipmentId.save();
+    }
+
+    await booking.save();
+    await booking
+      .populate('userId', 'name email')
+      .populate('equipmentId', 'name category location status availability')
+      .populate('lab', 'name department location');
+
+    res.json({
+      success: true,
+      message: 'Attendance marked absent and equipment released',
+      booking
+    });
+  } catch (err) {
+    console.error('Mark absent error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -164,12 +328,14 @@ const createBooking = async (req, res) => {
       date: new Date(date),
       timeSlot,
       requestedQuantity,
+      lab: equipment.lab,
       purpose: purpose || '',
       status: 'pending'
     });
 
-    await booking.populate('equipmentId', 'name category location');
+    await booking.populate('equipmentId', 'name category location status availability');
     await booking.populate('userId', 'name email');
+    await booking.populate('lab', 'name department location');
 
     res.status(201).json({
       success: true,
@@ -195,16 +361,18 @@ const updateBookingStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    // Admin can approve/reject
-    if (req.user.role === 'admin') {
-      if (!['approved', 'rejected'].includes(status)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Admin can only approve or reject bookings'
-        });
-      }
+    const isAdminUser = req.user.role === 'admin' || req.user.role === 'superadmin';
 
-      // If approving, check for double booking (another booking might have been approved)
+    if (!status || !['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Only approved or rejected are allowed.'
+      });
+    }
+
+    // Admin / superadmin can approve/reject
+    if (isAdminUser) {
+      // If approving, verify there is still no conflicting booking
       if (status === 'approved') {
         const isAvailable = await Booking.isSlotAvailable(
           booking.equipmentId,
@@ -223,6 +391,14 @@ const updateBookingStatus = async (req, res) => {
 
       booking.status = status;
       booking.adminNote = adminNote || '';
+      booking.attendanceStatus = status === 'approved' ? 'pending' : 'absent';
+
+      if (!booking.lab) {
+        const equipment = await Equipment.findById(booking.equipmentId).select('lab');
+        if (equipment?.lab) {
+          booking.lab = equipment.lab;
+        }
+      }
     }
     // Student can cancel their own pending bookings
     else if (req.user.role === 'student') {
@@ -320,6 +496,9 @@ const getEquipmentBookingCount = async (req, res) => {
 
 module.exports = {
   getAllBookings,
+  getPendingAttendance,
+  markPresentBooking,
+  markAbsentBooking,
   createBooking,
   updateBookingStatus,
   getStats,

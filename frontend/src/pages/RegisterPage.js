@@ -63,7 +63,7 @@ const RegisterPage = () => {
 
   const strength = form.password.length === 0 ? 0
     : form.password.length < 6 ? 1
-    : form.password.length < 10 ? 2 : 3;
+      : form.password.length < 10 ? 2 : 3;
 
   const strengthLabel = ['', 'Weak', 'Good', 'Strong'];
   const strengthColor = ['', 'var(--accent-red)', 'var(--accent-orange)', 'var(--accent-green)'];
@@ -95,7 +95,7 @@ const RegisterPage = () => {
           <div className="mb-3">
             <label className="form-label-custom">I am a</label>
             <div className="d-flex gap-2">
-              {['student', 'admin'].map(role => (
+              {['student', 'admin', 'superadmin'].map(role => (
                 <button
                   key={role}
                   type="button"

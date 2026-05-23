@@ -65,6 +65,11 @@ const EquipmentCard = ({ equipment, onEdit, onDelete }) => {
           <span className="category-badge">
             <i className={`bi ${icon} me-1`}></i>{equipment.category}
           </span>
+          {equipment.lab && (
+            <span className="category-badge" style={{ background: '#5b5de0', color: '#fff' }}>
+              <i className="bi bi-building me-1"></i>{equipment.lab.name}
+            </span>
+          )}
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             <i className="bi bi-stack me-1"></i>Qty: {equipment.quantity}
           </span>

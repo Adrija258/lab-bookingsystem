@@ -50,15 +50,29 @@ const protect = async (req, res, next) => {
 };
 
 // ========================
-// ADMIN ONLY MIDDLEWARE
+// ADMIN + SUPERADMIN ACCESS
 // ========================
 const adminOnly = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && (req.user.role === 'admin' || req.user.role === 'superadmin')) {
     next();
   } else {
     res.status(403).json({
       success: false,
       message: 'Access denied. Admin privileges required.'
+    });
+  }
+};
+
+// ========================
+// SUPERADMIN ONLY MIDDLEWARE
+// ========================
+const superAdminOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'superadmin') {
+    next();
+  } else {
+    res.status(403).json({
+      success: false,
+      message: 'Access denied. Super admin privileges required.'
     });
   }
 };
@@ -77,4 +91,12 @@ const studentOnly = (req, res, next) => {
   }
 };
 
-module.exports = { protect, adminOnly, studentOnly };
+const labInchargeOnly = (req, res, next) => {
+  if (req.user && (req.user.role === 'labincharge' || req.user.role === 'admin' || req.user.role === 'superadmin')) {
+    next();
+  } else {
+    res.status(403).json({ success: false, message: 'Access denied. Lab incharge required.' });
+  }
+};
+
+module.exports = { protect, adminOnly, superAdminOnly, studentOnly, labInchargeOnly };

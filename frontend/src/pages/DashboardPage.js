@@ -16,6 +16,7 @@ const DashboardPage = () => {
   const [stats, setStats] = useState(null);
   const [recentBookings, setRecentBookings] = useState([]);
   const [recentEquipment, setRecentEquipment] = useState([]);
+  const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -45,13 +46,13 @@ const DashboardPage = () => {
           bookingService.getAll()
         ]);
 
-        const equipment = equipRes.data.equipment || [];
+        const allEquipment = equipRes.data.equipment || [];
         const bookings = bookingRes.data.bookings || [];
 
         // Calculate stats locally
         setStats({
-          totalEquipment: equipment.length,
-          availableEquipment: equipment.filter(e => e.availability).length,
+          totalEquipment: allEquipment.length,
+          availableEquipment: allEquipment.filter(e => e.availability).length,
           totalBookings: bookings.length,
           pendingBookings: bookings.filter(b => b.status === 'pending').length,
           approvedBookings: bookings.filter(b => b.status === 'approved').length,
@@ -59,7 +60,8 @@ const DashboardPage = () => {
         });
 
         setRecentBookings(bookings.slice(0, 5));
-        setRecentEquipment(equipment.slice(0, 4));
+        setRecentEquipment(allEquipment.slice(0, 4));
+        setEquipment(allEquipment);
       } catch (err) {
         console.error('Dashboard load error:', err);
       } finally {
@@ -79,6 +81,20 @@ const DashboardPage = () => {
 
   const formatDate = (date) =>
     new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const labSummary = Object.values(equipment.reduce((acc, eq) => {
+    const labName = eq.lab?.name || 'Unassigned';
+    if (!acc[labName]) {
+      acc[labName] = {
+        name: labName,
+        count: 0,
+        department: eq.lab?.department || '',
+        location: eq.lab?.location || ''
+      };
+    }
+    acc[labName].count += 1;
+    return acc;
+  }, {}));
 
   const StatusBadge = ({ status }) => (
     <span className={`badge-custom badge-${status}`}>
@@ -179,6 +195,52 @@ const DashboardPage = () => {
           </div>
         </div>
       )}
+
+      <div className="row g-3 mb-4">
+        <div className="col-12">
+          <div className="card-dark">
+            <div className="card-header-custom d-flex align-items-center justify-content-between">
+              <h2 style={{ fontSize: '1rem', margin: 0 }}>
+                <i className="bi bi-building me-2" style={{ color: 'var(--accent-gold)' }}></i>
+                Lab Overview
+              </h2>
+              <button
+                className="btn-outline-custom"
+                style={{ fontSize: '0.75rem', padding: '0.3rem 0.65rem' }}
+                onClick={() => navigate('/equipment')}
+              >
+                View Equipment <i className="bi bi-arrow-right"></i>
+              </button>
+            </div>
+            {labSummary.length === 0 ? (
+              <div className="empty-state" style={{ padding: '2rem' }}>
+                <div className="empty-state-icon">🏛️</div>
+                <p className="empty-state-text">No labs or equipment available yet.</p>
+              </div>
+            ) : (
+              <div className="row g-3">
+                {labSummary.slice(0, 3).map((lab) => (
+                  <div key={lab.name} className="col-12 col-md-4">
+                    <div className="lab-summary-card">
+                      <div className="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '1rem' }}>{lab.name}</h3>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            {lab.department || 'General'} • {lab.location || 'No location'}
+                          </div>
+                        </div>
+                        <span className="badge-available" style={{ fontSize: '0.75rem' }}>
+                          {lab.count} items
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div className="row g-4">
         {/* Recent Bookings */}

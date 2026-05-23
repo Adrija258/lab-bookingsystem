@@ -22,18 +22,20 @@ import BookingPage from './pages/BookingPage';
 import BookingHistoryPage from './pages/BookingHistoryPage';
 import AdminPanelPage from './pages/AdminPanelPage';
 import AdminEquipmentPage from './pages/AdminEquipmentPage';
+import LabManagementPage from './pages/LabManagementPage';
 
 // Components
 import Navbar from './components/Navbar';
 import LoadingSpinner from './components/LoadingSpinner';
 
 // Protected Route component
-const ProtectedRoute = ({ children, adminOnly = false }) => {
+const ProtectedRoute = ({ children, adminOnly = false, superAdminOnly = false }) => {
   const { user, loading } = useAuth();
 
   if (loading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/login" replace />;
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (adminOnly && !['admin', 'superadmin'].includes(user.role)) return <Navigate to="/dashboard" replace />;
+  if (superAdminOnly && user.role !== 'superadmin') return <Navigate to="/dashboard" replace />;
 
   return children;
 };
@@ -86,6 +88,10 @@ function AppContent() {
 
           <Route path="/admin/equipment" element={
             <ProtectedRoute adminOnly><AdminEquipmentPage /></ProtectedRoute>
+          } />
+
+          <Route path="/admin/labs" element={
+            <ProtectedRoute superAdminOnly><LabManagementPage /></ProtectedRoute>
           } />
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

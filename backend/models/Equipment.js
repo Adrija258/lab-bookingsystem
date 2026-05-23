@@ -25,16 +25,29 @@ const equipmentSchema = new mongoose.Schema(
       enum: ['Electronics', 'Chemistry', 'Biology', 'Physics', 'Computer', 'Mechanical', 'Other'],
       default: 'Other'
     },
+    equipmentName: {
+      type: String,
+      trim: true
+    },
     quantity: {
       type: Number,
       required: [true, 'Quantity is required'],
       min: [1, 'Quantity must be at least 1'],
       default: 1
     },
+    availableQuantity: {
+      type: Number
+    },
     availability: {
       type: Boolean,
       default: true
     },
+    status: {
+      type: String,
+      enum: ['available', 'reserved', 'in-use', 'maintenance'],
+      default: 'available'
+    },
+    releasedAt: Date,
     imageUrl: {
       type: String,
       default: ''
@@ -47,6 +60,11 @@ const equipmentSchema = new mongoose.Schema(
     addedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+      required: true
+    },
+    lab: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Lab',
       required: true
     }
   },

@@ -21,6 +21,12 @@ const Booking = require('./models/Booking');
 
 const users = [
   {
+    name: 'Super Admin',
+    email: 'superadmin@lab.com',
+    password: 'Lab@Super2026',
+    role: 'superadmin'
+  },
+  {
     name: 'Admin User',
     email: 'admin@lab.com',
     password: 'Lab@Admin2026',
@@ -220,9 +226,10 @@ const seedDB = async () => {
     console.log('   DATABASE SEEDED SUCCESSFULLY');
     console.log('   ===========================');
     console.log('\n🔑 LOGIN CREDENTIALS:');
-    console.log('   Admin:   admin@lab.com   / Lab@Admin2026');
-    console.log('   Student: student@lab.com / Lab@Student2026');
-    console.log('   Student: bob@lab.com     / Lab@Student2026');
+    console.log('   Superadmin: superadmin@lab.com / Lab@Super2026');
+    console.log('   Admin:      admin@lab.com      / Lab@Admin2026');
+    console.log('   Student:    student@lab.com    / Lab@Student2026');
+    console.log('   Student:    bob@lab.com        / Lab@Student2026');
     console.log('\n🚀 Start the server: npm run dev\n');
 
     process.exit(0);

@@ -11,12 +11,15 @@ const express = require('express');
 const { body } = require('express-validator');
 const {
   getAllBookings,
+  getPendingAttendance,
+  markPresentBooking,
+  markAbsentBooking,
   createBooking,
   updateBookingStatus,
   getStats,
   getEquipmentBookingCount
 } = require('../controllers/bookingController');
-const { protect, adminOnly } = require('../middleware/authMiddleware');
+const { protect, adminOnly, labInchargeOnly } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -47,6 +50,9 @@ const bookingValidation = [
 ];
 
 router.get('/stats', protect, adminOnly, getStats);
+router.get('/pending', protect, adminOnly, getPendingAttendance);
+router.patch('/:id/mark-present', protect, labInchargeOnly, markPresentBooking);
+router.patch('/:id/mark-absent', protect, labInchargeOnly, markAbsentBooking);
 router.get('/count/:equipmentId', protect, getEquipmentBookingCount);
 router.get('/', protect, getAllBookings);
 router.post('/', protect, bookingValidation, createBooking);
